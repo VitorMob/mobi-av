@@ -84,7 +84,7 @@ void *Arena::req(unsigned int p_amount)
   }
   else
   {
-    if (m_overwrite && p_amount <= m_amount)
+    if (m_overwrite && p_amount <= m_size)
     {
       dell();
       goto new_block;
