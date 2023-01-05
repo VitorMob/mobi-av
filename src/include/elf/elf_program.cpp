@@ -21,8 +21,7 @@
 #pragma GCC option("arch=native", "tune=native", "no-zero-upper")          // Enable AVX
 #endif
 
-
-#define SwapEndian64(swap)                        \
+#define SwapEndian64Program(swap)                 \
         swap->p_offset = htobe64(swap->p_offset); \
         swap->p_filesz = htobe64(swap->p_filesz); \
         swap->p_flags = htobe32(swap->p_flags);   \
@@ -31,7 +30,7 @@
         swap->p_align = htobe64(swap->p_align);   \
         swap->p_type = htobe32(swap->p_type);
 
-#define SwapEndian32(swap)                        \
+#define SwapEndian32Program(swap)                 \
         swap->p_offset = htobe32(swap->p_offset); \
         swap->p_filesz = htobe32(swap->p_filesz); \
         swap->p_flags = htobe32(swap->p_flags);   \
@@ -51,61 +50,66 @@ ElfProgram::~ElfProgram()
 // T(N+e_phnum)
 void ElfProgram::MapElfProgram(const struct FileElf &p_fileElf)
 {
-        if (p_fileElf.buffer == nullptr)
+        if (p_fileElf.buffer != nullptr)
+        {
+                bool endian = p_fileElf.buffer[EI_DATA] != ELFDATANATIVE;
+
+                // 64-bit
+                if (p_fileElf.buffer[EI_CLASS] == ELFCLASS64)
+                {
+#if DEBUG
+                        fmt::print("\n[{}][DEBUG]\n\t Mapping ElfProgram File: {}\n\t Size: {}\n\t 64-bit \n\t", __FUNCTION__, p_fileElf.nameFile, p_fileElf.sizeFile);
+#endif
+                        // valid offsets
+                        ValidateOffset(p_fileElf.elf.Header64->e_phnum, static_cast<long unsigned int>(p_fileElf.sizeFile), "ELF : program entry count not valid");
+                        ValidateOffset(p_fileElf.elf.Header64->e_phentsize, static_cast<long unsigned int>(p_fileElf.sizeFile), "ELF : program size not valid, invalid size");
+                        ValidateOffset(p_fileElf.elf.Header64->e_phoff, static_cast<long unsigned int>(p_fileElf.sizeFile), "ELF : program offset not valid, invalid size");
+
+                        p_fileElf.elf.Program64.reserve(p_fileElf.elf.Header64->e_phnum * p_fileElf.elf.Header64->e_phentsize);
+
+                        // store program offset
+                        for (int i = 0; i < p_fileElf.elf.Header64->e_phnum; i++)
+                        {
+                                p_fileElf.elf.Program64.push_back((Elf64_Phdr *)(p_fileElf.buffer + (p_fileElf.elf.Header64->e_phoff + (i * p_fileElf.elf.Header64->e_phentsize))));
+                                if (endian)
+                                {
+                                        SwapEndian64Program(p_fileElf.elf.Program64.back());
+                                }
+                        }
+
+                        m_Program64 = p_fileElf.elf.Program64;
+                }
+                else // 32-bit
+                {
+#if DEBUG
+                        fmt::print("\n[{}][DEBUG]\n\t Mapping ElfProgram File: {}\n\t Size: {}\n\t 32-bit \n\t", __FUNCTION__, p_fileElf.nameFile, p_fileElf.sizeFile);
+#endif
+                        ValidateOffset(p_fileElf.elf.Header32->e_phentsize, (long unsigned int)p_fileElf.sizeFile, "ELF : program size not valid, invalid size");
+                        ValidateOffset(p_fileElf.elf.Header32->e_phnum, (long unsigned int)p_fileElf.sizeFile, "ELF : program entry count not valid");
+                        ValidateOffset(p_fileElf.elf.Header32->e_phoff, (long unsigned int)p_fileElf.sizeFile, "ELF : program offset not valid, invalid size");
+
+                        p_fileElf.elf.Program32.reserve(p_fileElf.elf.Header32->e_phnum * p_fileElf.elf.Header32->e_phentsize);
+
+                        for (int i = 0; i < p_fileElf.elf.Header32->e_phnum; i++)
+                        {
+                                p_fileElf.elf.Program32.push_back((Elf32_Phdr *)(p_fileElf.buffer + (p_fileElf.elf.Header32->e_phoff + (i * p_fileElf.elf.Header32->e_phentsize))));
+                                if (endian)
+                                {
+                                        SwapEndian32Program(p_fileElf.elf.Program32.back());
+                                }
+                        }
+
+                        m_Program32 = p_fileElf.elf.Program32;
+                }
+
+                (m_Program64.size() > 0) ? m_class64 = true : m_class64 = false;
+        }
+        else
         {
                 std::string msg = "ELF : buffer invalid, check if the elf has been parsed";
                 m_log.mlogger_msg(ERROR, msg);
                 throw std::logic_error(msg);
         }
-        // 64-bit
-        else if (p_fileElf.buffer[EI_CLASS] == ELFCLASS64)
-        {
-#if DEBUG
-                fmt::print("\n[{}][DEBUG]\n\t Mapping ElfProgram File: {}\n\t Size: {}\n\t 64-bit \n\t", __FUNCTION__, p_fileElf.nameFile, p_fileElf.sizeFile);
-#endif
-                // valid offsets
-                ValidateOffset(p_fileElf.elf.Header64->e_phnum, static_cast<long unsigned int>(p_fileElf.sizeFile), "ELF : program entry count not valid");
-                ValidateOffset(p_fileElf.elf.Header64->e_phentsize, static_cast<long unsigned int>(p_fileElf.sizeFile), "ELF : program size not valid, invalid size");
-                ValidateOffset(p_fileElf.elf.Header64->e_phoff, static_cast<long unsigned int>(p_fileElf.sizeFile), "ELF : program offset not valid, invalid size");
-
-                p_fileElf.elf.Program64.reserve(p_fileElf.elf.Header64->e_phnum * p_fileElf.elf.Header64->e_phentsize);
-
-                // store program offset
-                for (int i = 0; i < p_fileElf.elf.Header64->e_phnum; i++)
-                {
-                        p_fileElf.elf.Program64.push_back((Elf64_Phdr *)(p_fileElf.buffer + (p_fileElf.elf.Header64->e_phoff + (i * p_fileElf.elf.Header64->e_phentsize))));
-                        if (p_fileElf.buffer[EI_DATA] != ELFDATANATIVE)
-                        {
-                                SwapEndian64(p_fileElf.elf.Program64.back());
-                        }
-                }
-
-                m_Program64 = p_fileElf.elf.Program64;
-        }
-        else // 32-bit
-        {
-#if DEBUG
-                fmt::print("\n[{}][DEBUG]\n\t Mapping ElfProgram File: {}\n\t Size: {}\n\t 32-bit \n\t", __FUNCTION__, p_fileElf.nameFile, p_fileElf.sizeFile);
-#endif
-                ValidateOffset(p_fileElf.elf.Header32->e_phentsize, (long unsigned int)p_fileElf.sizeFile, "ELF : program size not valid, invalid size");
-                ValidateOffset(p_fileElf.elf.Header32->e_phnum, (long unsigned int)p_fileElf.sizeFile, "ELF : program entry count not valid");
-                ValidateOffset(p_fileElf.elf.Header32->e_phoff, (long unsigned int)p_fileElf.sizeFile, "ELF : program offset not valid, invalid size");
-
-                p_fileElf.elf.Program32.reserve(p_fileElf.elf.Header32->e_phnum * p_fileElf.elf.Header32->e_phentsize);
-
-                for (int i = 0; i < p_fileElf.elf.Header32->e_phnum; i++)
-                {
-                        p_fileElf.elf.Program32.push_back((Elf32_Phdr *)(p_fileElf.buffer + (p_fileElf.elf.Header32->e_phoff + (i * p_fileElf.elf.Header32->e_phentsize))));
-                        if (p_fileElf.buffer[EI_DATA] != ELFDATANATIVE)
-                        {
-                                SwapEndian32(p_fileElf.elf.Program32.back());
-                        }
-                }
-
-                m_Program32 = p_fileElf.elf.Program32;
-        }
-
-        (m_Program64.size() > 0) ? m_class64 = true : m_class64 = false;
 }
 
 const off_t ElfProgram::Filesz(uint16_t p_pos)
