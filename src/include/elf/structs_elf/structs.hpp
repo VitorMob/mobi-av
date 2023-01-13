@@ -40,7 +40,7 @@ struct FileElf
 {
     FileDescriptorManage fdm = 0;
     const char *nameFile = nullptr;
-    const char *buffer = nullptr;
+    const char *bufferFile = nullptr;
     mutable off_t sizeFile = 0;
     mutable Elf elf;
 };
