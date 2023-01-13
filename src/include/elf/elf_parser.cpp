@@ -4,13 +4,26 @@
 #include <endian.h>
 #include <fmt/core.h>
 
+// optimization active vetorization
+#if __AVX__ && !DEBUG
+#pragma GCC optimize("O2", "unroll-loops", "omit-frame-pointer", "inline") // Optimization flags
+#pragma GCC option("arch=native", "tune=native", "no-zero-upper")          // Enable AVX
+#pragma GCC target("avx")                                                  // Enable AVX
+#include <x86intrin.h>                                                     // AVX/SSE Extensions
+#elif __SSE__ && !DEBUG
+#pragma GCC target("sse")                                                  // Enable SSE
+#include <x86intrin.h>                                                     // AVX/SSE Extensions
+#pragma GCC optimize("O2", "unroll-loops", "omit-frame-pointer", "inline") // Optimization flags
+#pragma GCC option("arch=native", "tune=native", "no-zero-upper")          // Enable AVX
+#endif
+
 ElfParser::ElfParser(const char *p_path)
 {
     m_fileElf.nameFile = p_path;
     if (m_fileElf.fdm.Open(m_fileElf.nameFile, PROT_READ | PROT_WRITE, MAP_PRIVATE))
     {
         m_fileElf.sizeFile = m_fileElf.fdm.Size();
-        m_fileElf.buffer = m_fileElf.fdm.Buffer();
+        m_fileElf.bufferFile = m_fileElf.fdm.Buffer();
 
 #if DEBUG
         fmt::print("\n[{}][DEBUG]\n\t Load File: {}\n\t Size: {}\n\t ", __FUNCTION__, m_fileElf.nameFile, m_fileElf.sizeFile);
@@ -35,7 +48,7 @@ void ElfParser::Parser(const char *p_path)
     if (m_fileElf.fdm.Open(m_fileElf.nameFile, PROT_READ | PROT_WRITE, MAP_PRIVATE))
     {
         m_fileElf.sizeFile = m_fileElf.fdm.Size();
-        m_fileElf.buffer = m_fileElf.fdm.Buffer();
+        m_fileElf.bufferFile = m_fileElf.fdm.Buffer();
 
 #if DEBUG
         fmt::print("\n[{}][DEBUG]\n\t Load File: {}\n\t Size: {}\n\t ", __FUNCTION__, m_fileElf.nameFile, m_fileElf.sizeFile);
@@ -51,21 +64,21 @@ void ElfParser::ParserPointer(const char *p_pointer, off_t p_size, const char *p
 {
     m_fileElf.nameFile = p_name;
     m_fileElf.sizeFile = p_size;
-    m_fileElf.buffer = p_pointer;
+    m_fileElf.bufferFile = p_pointer;
 }
 
 void ElfParser::ElfClassStructs() const
 {
-    if (m_fileElf.buffer[EI_CLASS] == ELFCLASS64)
-        m_fileElf.elf.Header64 = (Elf64_Ehdr *)m_fileElf.buffer;
+    if (m_fileElf.bufferFile[EI_CLASS] == ELFCLASS64)
+        m_fileElf.elf.Header64 = (Elf64_Ehdr *)m_fileElf.bufferFile;
     else
-        m_fileElf.elf.Header32 = (Elf32_Ehdr *)m_fileElf.buffer;
+        m_fileElf.elf.Header32 = (Elf32_Ehdr *)m_fileElf.bufferFile;
 }
 
 void ElfParser::ElfValidate()
 {
-    if (m_fileElf.buffer[EI_MAG0] != 0x7f && m_fileElf.buffer[EI_MAG1] != 0x45 &&
-        m_fileElf.buffer[EI_MAG2] != 0x4c && m_fileElf.buffer[EI_MAG3] != 0x46)
+    if (m_fileElf.bufferFile[EI_MAG0] != 0x7f && m_fileElf.bufferFile[EI_MAG1] != 0x45 &&
+        m_fileElf.bufferFile[EI_MAG2] != 0x4c && m_fileElf.bufferFile[EI_MAG3] != 0x46)
     {
         const std::string msg = fmt::format("ELF : Format magic elf not valid {}\n", m_fileElf.nameFile);
         m_log.mlogger_msg(ERROR, msg);
@@ -89,9 +102,9 @@ void ElfParser::ElfCallSequence()
     m_elfDynamic.MapElfDynamic(m_fileElf); // 4
 }
 
-const Elf ElfParser::StructsElf() const
+const FileElf* ElfParser::mFileInfo() const
 {
-    return m_fileElf.elf;
+    return &m_fileElf;
 }
 
 const ElfHeader ElfParser::mElfHeader() const

@@ -20,7 +20,7 @@ public:
   void ParserPointer(const char *, off_t, const char * = "ELF_POINTER");
 
   // functions for get infos this parser
-  const Elf StructsElf() const;
+  const FileElf* mFileInfo() const;
   const ElfHeader mElfHeader() const;
   ElfProgram mElfProgram() const;
   ElfSection mElfSection() const;
