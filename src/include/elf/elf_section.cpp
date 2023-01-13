@@ -3,6 +3,20 @@
 #include <stdexcept>
 #include <fmt/core.h>
 
+// optimization active vetorization
+#if __AVX__ && !DEBUG
+#pragma GCC optimize("O2", "unroll-loops", "omit-frame-pointer", "inline") // Optimization flags
+#pragma GCC option("arch=native", "tune=native", "no-zero-upper")          // Enable AVX
+#pragma GCC target("avx")                                                  // Enable AVX
+#include <x86intrin.h>                                                     // AVX/SSE Extensions
+#elif __SSE__ && !DEBUG
+#pragma GCC target("sse")                                                  // Enable SSE
+#include <x86intrin.h>                                                     // AVX/SSE Extensions
+#pragma GCC optimize("O2", "unroll-loops", "omit-frame-pointer", "inline") // Optimization flags
+#pragma GCC option("arch=native", "tune=native", "no-zero-upper")          // Enable AVX
+#endif
+
+// swap struct section header for 64-bit
 #define SwapEndian64Section(swap)                         \
         swap->sh_name = htobe32(swap->sh_name);           \
         swap->sh_type = htobe32(swap->sh_type);           \
@@ -15,6 +29,7 @@
         swap->sh_entsize = htobe64(swap->sh_entsize);     \
         swap->sh_size = htobe64(swap->sh_size);
 
+// swap struct section header for 32-bit
 #define SwapEndian32Section(swap)                         \
         swap->sh_name = htobe32(swap->sh_name);           \
         swap->sh_type = htobe32(swap->sh_type);           \
@@ -35,6 +50,11 @@ ElfSection::~ElfSection()
 {
 }
 
+/**
+ * @brief Will map the sections of our elf binary
+ * 
+ * @param p_fileElf struct info FileElf
+ */
 void ElfSection::MapElfSection(const struct FileElf &p_fileElf)
 {
         if (p_fileElf.buffer != nullptr)
@@ -100,56 +120,147 @@ void ElfSection::MapElfSection(const struct FileElf &p_fileElf)
         }
 }
 
+/**
+ * @brief  This member specifies the name of the section.  Its value 
+ *         is an index into the section header string table section,
+           giving the location of a null-terminated string.
+ * 
+ * @param p_pos position 
+ * @return const uint32_t 
+ */
 const uint32_t ElfSection::Name(uint16_t p_pos)
 {
         return (m_class64) ? m_Section64.at(p_pos)->sh_name : m_Section32.at(p_pos)->sh_name;
 }
 
+/**
+ * @brief member specifies the sections's semantics.
+ * 
+ * @param p_pos position
+ * @return const uint32_t 
+ */
 const uint32_t ElfSection::Type(uint16_t p_pos)
 {
         return (m_class64) ? m_Section64.at(p_pos)->sh_type : m_Section32.at(p_pos)->sh_type;
 }
 
+/**
+ * @brief This member holds a section header table index link, whose 
+ *         interpretation depends on the section type.
+ * 
+ * @param p_pos  position
+ * @return const uint32_t 
+ */
 const uint32_t ElfSection::Link(uint16_t p_pos)
 {
         return (m_class64) ? m_Section64.at(p_pos)->sh_link : m_Section32.at(p_pos)->sh_link;
 }
 
+/**
+ * @brief  This member holds extra information, whose interpretation depends on the section type.
+ * 
+ * @param p_pos  position
+ * @return const uint32_t 
+ */
 const uint32_t ElfSection::Info(uint16_t p_pos)
 {
         return (m_class64) ? m_Section64.at(p_pos)->sh_info : m_Section32.at(p_pos)->sh_info;
 }
 
+/**
+ * @brief  Sections support one-bit flags that describe miscellaneous
+           attributes.  If a flag bit is set in sh_flags, the
+           attribute is "on" for the section.  Otherwise, the
+           attribute is "off" or does not apply.  Undefined
+           attributes are set to zero.
+ * 
+ * @param p_pos position
+ * @return const off_t 
+ */
 const off_t ElfSection::Flags(uint16_t p_pos)
 {
         return (m_class64) ? m_Section64.at(p_pos)->sh_flags : m_Section32.at(p_pos)->sh_flags;
 }
 
+/**
+ * @brief  If this section appears in the memory image of a process,
+           this member holds the address at which the section's first
+           byte should reside.  Otherwise, the member contains zero.
+ * 
+ * @param p_pos position
+ * @return const off_t 
+ */
 const off_t ElfSection::Addr(uint16_t p_pos)
 {
         return (m_class64) ? m_Section64.at(p_pos)->sh_addr : m_Section32.at(p_pos)->sh_addr;
 }
 
+/**
+ * @brief Some sections have address alignment constraints.  If a
+          section holds a doubleword, the system must ensure
+          doubleword alignment for the entire section.  That is, the
+          value of sh_addr must be congruent to zero, modulo the
+          value of sh_addralign.  Only zero and positive integral
+          powers of two are allowed.  The value 0 or 1 means that
+          the section has no alignment constraints.
+ * 
+ * @param p_pos  position
+ * @return const off_t 
+ */
 const off_t ElfSection::Addralign(uint16_t p_pos)
 {
         return (m_class64) ? m_Section64.at(p_pos)->sh_addralign : m_Section32.at(p_pos)->sh_addralign;
 }
 
+/**
+ * @brief  Some sections hold a table of fixed-sized entries, such as
+           a symbol table.  For such a section, this member gives the
+           size in bytes for each entry.  This member contains zero
+           if the section does not hold a table of fixed-size
+           entries.
+ * 
+ * @param p_pos position
+ * @return const off_t 
+ */
 const off_t ElfSection::Entsize(uint16_t p_pos)
 {
         return (m_class64) ? m_Section64.at(p_pos)->sh_entsize : m_Section32.at(p_pos)->sh_entsize;
 }
 
+/**
+ * @brief  This member's value holds the byte offset from the
+           beginning of the file to the first byte in the section.
+           One section type, SHT_NOBITS, occupies no space in the
+           file, and its sh_offset member locates the conceptual
+           placement in the file.
+ * 
+ * @param p_pos position
+ * @return const off_t 
+ */
 const off_t ElfSection::Offset(uint16_t p_pos)
 {
         return (m_class64) ? m_Section64.at(p_pos)->sh_offset : m_Section32.at(p_pos)->sh_offset;
 }
 
+/**
+ * @brief   This member holds the section's size in bytes.  Unless the
+            section type is SHT_NOBITS, the section occupies sh_size
+            bytes in the file.  A section of type SHT_NOBITS may have
+            a nonzero size, but it occupies no space in the file.
+ * 
+ * @param p_pos position
+ * @return const off_t 
+ */
 const off_t ElfSection::Size(uint16_t p_pos)
 {
         return (m_class64) ? m_Section64.at(p_pos)->sh_size : m_Section32.at(p_pos)->sh_size;
 }
 
+/**
+ * @brief Get size Section Header
+ * 
+ * @return const std::size_t 
+ */
 const std::size_t ElfSection::SizeSectionHeader() const
 {
         return (m_class64) ? m_Section64.size() : m_Section32.size();
