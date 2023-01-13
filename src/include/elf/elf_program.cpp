@@ -55,12 +55,12 @@ ElfProgram::~ElfProgram()
  */
 void ElfProgram::MapElfProgram(const struct FileElf &p_fileElf)
 {
-        if (p_fileElf.buffer != nullptr)
+        if (p_fileElf.bufferFile != nullptr)
         {
-                bool endian = p_fileElf.buffer[EI_DATA] != ELFDATANATIVE;
+                bool endian = p_fileElf.bufferFile[EI_DATA] != ELFDATANATIVE;
 
                 // 64-bit
-                if (p_fileElf.buffer[EI_CLASS] == ELFCLASS64)
+                if (p_fileElf.bufferFile[EI_CLASS] == ELFCLASS64)
                 {
 #if DEBUG
                         fmt::print("\n[{}][DEBUG]\n\t Mapping ElfProgram File: {}\n\t Size: {}\n\t 64-bit \n\t", __FUNCTION__, p_fileElf.nameFile, p_fileElf.sizeFile);
@@ -75,7 +75,7 @@ void ElfProgram::MapElfProgram(const struct FileElf &p_fileElf)
                         // store program offset
                         for (int i = 0; i < p_fileElf.elf.Header64->e_phnum; i++)
                         {
-                                p_fileElf.elf.Program64.push_back((Elf64_Phdr *)(p_fileElf.buffer + (p_fileElf.elf.Header64->e_phoff + (i * p_fileElf.elf.Header64->e_phentsize))));
+                                p_fileElf.elf.Program64.push_back((Elf64_Phdr *)(p_fileElf.bufferFile + (p_fileElf.elf.Header64->e_phoff + (i * p_fileElf.elf.Header64->e_phentsize))));
                                 if (endian)
                                 {
                                         SwapEndian64Program(p_fileElf.elf.Program64.back());
@@ -97,7 +97,7 @@ void ElfProgram::MapElfProgram(const struct FileElf &p_fileElf)
 
                         for (int i = 0; i < p_fileElf.elf.Header32->e_phnum; i++)
                         {
-                                p_fileElf.elf.Program32.push_back((Elf32_Phdr *)(p_fileElf.buffer + (p_fileElf.elf.Header32->e_phoff + (i * p_fileElf.elf.Header32->e_phentsize))));
+                                p_fileElf.elf.Program32.push_back((Elf32_Phdr *)(p_fileElf.bufferFile + (p_fileElf.elf.Header32->e_phoff + (i * p_fileElf.elf.Header32->e_phentsize))));
                                 if (endian)
                                 {
                                         SwapEndian32Program(p_fileElf.elf.Program32.back());
@@ -111,7 +111,7 @@ void ElfProgram::MapElfProgram(const struct FileElf &p_fileElf)
         }
         else
         {
-                std::string msg = "ELF : buffer invalid, check if the elf has been parsed";
+                std::string msg = "ELF : bufferFile invalid, check if the elf has been parsed";
                 m_log.mlogger_msg(ERROR, msg);
                 throw std::logic_error(msg);
         }

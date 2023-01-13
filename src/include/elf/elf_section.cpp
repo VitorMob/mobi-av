@@ -57,12 +57,12 @@ ElfSection::~ElfSection()
  */
 void ElfSection::MapElfSection(const struct FileElf &p_fileElf)
 {
-        if (p_fileElf.buffer != nullptr)
+        if (p_fileElf.bufferFile != nullptr)
         {
-                bool endian = p_fileElf.buffer[EI_DATA] != ELFDATANATIVE;
+                bool endian = p_fileElf.bufferFile[EI_DATA] != ELFDATANATIVE;
 
                 // 64-bit
-                if (p_fileElf.buffer[EI_CLASS] == ELFCLASS64)
+                if (p_fileElf.bufferFile[EI_CLASS] == ELFCLASS64)
                 {
 #if DEBUG
                         fmt::print("\n[{}][DEBUG]\n\t Mapping ElfSection File: {}\n\t Size: {}\n\t 64-bit \n\t", __FUNCTION__, p_fileElf.nameFile, p_fileElf.sizeFile);
@@ -76,7 +76,7 @@ void ElfSection::MapElfSection(const struct FileElf &p_fileElf)
                         // store section offset
                         for (int i = 0; i < p_fileElf.elf.Header64->e_phnum; i++)
                         {
-                                p_fileElf.elf.Section64.push_back((Elf64_Shdr *)(p_fileElf.buffer + (p_fileElf.elf.Header64->e_shoff + (i * p_fileElf.elf.Header64->e_shentsize))));
+                                p_fileElf.elf.Section64.push_back((Elf64_Shdr *)(p_fileElf.bufferFile + (p_fileElf.elf.Header64->e_shoff + (i * p_fileElf.elf.Header64->e_shentsize))));
                                 if (endian)
                                 {
                                         SwapEndian64Section(p_fileElf.elf.Section64.back());
@@ -100,7 +100,7 @@ void ElfSection::MapElfSection(const struct FileElf &p_fileElf)
                         // store section offset
                         for (int i = 0; i < p_fileElf.elf.Header32->e_phnum; i++)
                         {
-                                p_fileElf.elf.Section32.push_back((Elf32_Shdr *)(p_fileElf.buffer + (p_fileElf.elf.Header32->e_shoff + (i * p_fileElf.elf.Header32->e_shentsize))));
+                                p_fileElf.elf.Section32.push_back((Elf32_Shdr *)(p_fileElf.bufferFile + (p_fileElf.elf.Header32->e_shoff + (i * p_fileElf.elf.Header32->e_shentsize))));
                                 if (endian)
                                 {
                                         SwapEndian32Section(p_fileElf.elf.Section32.back());
@@ -114,7 +114,7 @@ void ElfSection::MapElfSection(const struct FileElf &p_fileElf)
         }
         else
         {
-                std::string msg = "ELF : buffer invalid, check if the elf has been parsed";
+                std::string msg = "ELF : bufferFile invalid, check if the elf has been parsed";
                 m_log.mlogger_msg(ERROR, msg);
                 throw std::logic_error(msg);
         }
