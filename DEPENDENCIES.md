@@ -10,4 +10,4 @@ Install dependencies for compile project .
 Install the following libraries for project operation .
 
 
-> `sudo pacman -S fmt gtest benchmark # install libraries`
+> `sudo pacman -S fmt gtest benchmark nlohmann-json # install libraries`
