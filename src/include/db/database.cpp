@@ -14,66 +14,76 @@
 #endif
 
 #include <fmt/core.h>
+#include <nlohmann/json.hpp>
 
-DataBase::DataBase() : m_fdm(false)
+
+// for convenience
+using json = nlohmann::json;
+
+DataBase::DataBase() : m_fdm(true)
 {
+        if (sqlite3_open(PATH_SQLITE_DB, &m_database))
+        {
+                const std::string msg = fmt::format("DataBase : error in open/create database sqlite \n", PATH_SQLITE_DB);
+                log.mlogger_msg(ERROR, msg);
+                throw std::runtime_error(msg);
+        }
+        else
+                CreateTables();
 }
 
 DataBase::~DataBase()
 {
+        sqlite3_close(m_database);
 }
 
-void DataBase::Init_db()
+void DataBase::InitDb()
 {
-        ParserUnixHsb();
+        ParserMalwareJson();
+}
+
+void DataBase::CreateTables()
+{
+
+        if (m_fdm.Open(PATH_TABLES_SQL, O_RDONLY) == true && m_fdm.Read() != nullptr)
+        {
+                sqlite3_exec(m_database,
+                             m_fdm.Buffer(),
+                             nullptr,
+                             nullptr,
+                             nullptr);
+        }
+        else
+        {
+                const std::string msg = fmt::format("DataBase : error in create tables {}", m_fdm.Buffer());
+                log.mlogger_msg(ERROR, msg);
+                throw std::runtime_error(msg);
+        }
 }
 
 /**
  * @brief parser to unix.hsb
  *
  */
-void DataBase::ParserUnixHsb()
+void DataBase::ParserMalwareJson()
 {
-        if (m_fdm.Open(PATH_UNIX_DB, PROT_READ | PROT_WRITE, MAP_PRIVATE))
+        if (m_fdm.Open(PATH_UNIX_DB, PROT_READ | PROT_WRITE, MAP_PRIVATE) && m_fdm.Read() != nullptr && m_database)
         {
 #if DEBUG
                 fmt::print("\n[{}][DEBUG]\n\t Initing Database\n\t ", __FUNCTION__);
 #endif
-                const char *buffer = m_fdm.Buffer();
-                off_t size = m_fdm.Size();
+                json json_malware = json::parse(std::move(m_fdm.Buffer()));
 
-                // Big O(N^2)
-                // this vetorization intel
-                for (int c = 0; c < size; c++)
+                // iterate the array
+
+                for (json::iterator it = json_malware.begin(); it != json_malware.end(); ++it)
                 {
-                        // parser  hash
-                        for (int i = 0; i <= size; i++)
-                        {
-                                if (buffer[i] == ':')
-                                        break;
-                                m_malw.hash += buffer[i];
-                        }
-
-                        // parser  size
-                        for (int i = m_malw.hash.size() + 1; size; i++)
-                        {
-                                if (buffer[i] == ':')
-                                        break;
-                                m_malw.size += buffer[i];
-                        }
-
-                        // parser  name file
-                        for (int i = m_malw.size.size() + 1; size; i++)
-                        {
-                                if (buffer[i] == ':')
-                                        break;
-                                m_malw.name += buffer[i];
-                        }
-
-                        // clear strings
-                        m_malw.size.clear();
-                        m_malw.hash.clear();
-                        m_malw.name.clear();
+                        const std::string sql = fmt::format("INSERT INTO  malwares (m_hash, m_name, m_size) VALUES ({},{},{});", it.value()["Hash"].dump(), it.value()["Name"].dump(), it.value()["Size"].dump());
+                        sqlite3_exec(m_database,
+                                     sql.c_str(),
+                                     nullptr,
+                                     nullptr,
+                                     nullptr);
                 }
         }
         else
