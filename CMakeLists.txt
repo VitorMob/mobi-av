@@ -19,7 +19,7 @@ set(BENCHMARK ON)
 
 # libs
 find_package(fmt)
-#find_package(nlohmann_json 3.2.0 REQUIRED) is not utilized
+find_package(nlohmann_json 3.2.0 REQUIRED)
 
 set(CMAKE_CXX_FLAGS " ")
 
@@ -131,7 +131,7 @@ if(TESTUNIT)
   include(GoogleTest)
   add_executable(mobi-test ${PROJECT_SOURCES})
 
-  target_link_libraries(mobi-test gtest gtest_main fmt::fmt) #nlohmann_json::nlohmann_json
+  target_link_libraries(mobi-test gtest gtest_main fmt::fmt nlohmann_json::nlohmann_json)
 endif()
 
 set(PROJECT_SOURCES
@@ -169,4 +169,4 @@ set(PROJECT_SOURCES
 )
 
 add_executable(mobi-av ${PROJECT_SOURCES})
-target_link_libraries(mobi-av fmt::fmt)
+target_link_libraries(mobi-av fmt::fmt sqlite3)
