@@ -1,0 +1,1 @@
+CREATE TABLE malwares ( m_hash TEXT NOT NULL PRIMARY KEY, m_name TEXT NOT NULL, m_size int NOT NULL);
