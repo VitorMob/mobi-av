@@ -124,7 +124,7 @@ const char *FileDescriptorManage::Read()
   if (m_useArena == false)
   {
     msg.assign("File Manager : Read() method used only for unmapped files");
-    return static_cast<const char *>(m_mapFile);
+    throw std::runtime_error(msg);
   }
 
   m_heapFile = static_cast<char *>(m_fast.req(m_sizeFile));
