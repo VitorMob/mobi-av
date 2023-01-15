@@ -18,11 +18,12 @@
 
 int main(void)
 {
-    // DataBase db;
+    DataBase db;
 
-    // db.Init_db();
+    db.InitDb();
 
     ElfParser parser;
+    
 
     parser.Parser("./mobi-av");
     fmt::print("Elf Header: \n\n");
