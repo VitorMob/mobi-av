@@ -3,8 +3,11 @@
 #include "src/include/fdm/file_manager.hpp"
 #include "src/include/logger/mlogger.hpp"
 #include <string>
+#include <sqlite3.h>
 
-#define PATH_UNIX_DB "../src/include/db/.dbinit/unix.hsb"
+#define PATH_UNIX_DB "../src/include/db/.dbinit/malwares.json"
+#define PATH_SQLITE_DB "../src/include/db/.dbinit/mobi-db.sql"
+#define PATH_TABLES_SQL "../src/include/db/schema_tables.sql"
 
 class DataBase
 {
@@ -12,17 +15,14 @@ public:
         DataBase();
         ~DataBase();
 
-        void Init_db();
+        void InitDb();
 
 private:
-        void ParserUnixHsb();
+        sqlite3 *m_database;
         FileDescriptorManage m_fdm;
         mLogger log;
-        
-        struct Malware
-        {
-                std::string hash;
-                std::string name;
-                std::string size;
-        } m_malw;
+
+        void ParserMalwareJson();
+        void CreateTables();
+
 };
